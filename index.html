@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>写真台帳自動作成 | 発掘調査支援ツール</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1c1f1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="写真台帳">
+<style>
+:root{
+  --paper:#e9e2cf;
+  --paper-dim:#ddd4bc;
+  --ink:#1c1f1a;
+  --ink-soft:#4a4a3f;
+  --line:#c9bea0;
+  --shu:#b3341f;
+  --shu-dim:#8f2a19;
+  --ok:#3f5d3a;
+  --white:#faf7ee;
+  --mono: 'Courier New', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  background:
+    repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(28,31,26,0.05) 28px),
+    var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  min-height:100vh;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.app{max-width:720px;margin:0 auto;padding:0 0 40px;}
+
+/* Header */
+header.top{
+  position:sticky; top:0; z-index:50;
+  background:var(--ink);
+  color:var(--white);
+  padding:14px 18px calc(14px + env(safe-area-inset-top)) 18px;
+  padding-top:calc(14px + env(safe-area-inset-top));
+  display:flex; align-items:center; justify-content:space-between;
+  border-bottom:3px solid var(--shu);
+}
+header.top .brand{display:flex; align-items:baseline; gap:8px;}
+header.top .brand .mark{
+  font-family:var(--mono); font-weight:700; font-size:11px;
+  border:1.5px solid var(--shu); color:var(--shu);
+  padding:2px 6px; border-radius:2px; letter-spacing:0.05em;
+  transform:rotate(-3deg); display:inline-block;
+}
+header.top h1{font-size:16px; font-weight:600; margin:0; letter-spacing:0.02em;}
+header.top .icon-btn{
+  background:none;border:1px solid rgba(250,247,238,0.35);color:var(--white);
+  width:36px;height:36px;border-radius:8px;font-size:16px;display:flex;
+  align-items:center;justify-content:center; cursor:pointer;
+}
+header.top .icon-btn:active{background:rgba(250,247,238,0.15);}
+
+.screen{display:none; padding:20px 18px 10px;}
+.screen.active{display:block;}
+
+/* Cards */
+.card{
+  background:var(--white);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:18px;
+  margin-bottom:16px;
+  box-shadow:0 1px 0 rgba(28,31,26,0.06);
+  position:relative;
+}
+.card::before{
+  content:'';
+  position:absolute; left:0; top:14px; bottom:14px; width:3px;
+  background:var(--line); border-radius:2px;
+}
+.card.accent::before{background:var(--shu);}
+.card h2{
+  font-size:13px; text-transform:uppercase; letter-spacing:0.08em;
+  color:var(--ink-soft); margin:0 0 12px; font-weight:700;
+  display:flex; align-items:center; gap:8px;
+}
+.card h2 .num{
+  font-family:var(--mono); background:var(--ink); color:var(--white);
+  font-size:11px; padding:1px 6px; border-radius:3px;
+}
+p.lead{font-size:14px; line-height:1.75; color:var(--ink-soft); margin:0 0 14px;}
+.steps{list-style:none; margin:0 0 16px; padding:0; counter-reset:step;}
+.steps li{
+  counter-increment:step;
+  display:flex; gap:12px; align-items:flex-start;
+  font-size:14px; line-height:1.6; padding:10px 0;
+  border-bottom:1px dashed var(--line);
+}
+.steps li:last-child{border-bottom:none;}
+.steps li::before{
+  content:counter(step);
+  flex:0 0 auto; width:24px; height:24px; border-radius:50%;
+  background:var(--paper-dim); border:1px solid var(--line);
+  font-family:var(--mono); font-size:12px; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* Buttons */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  font-family:var(--sans); font-size:15px; font-weight:600;
+  padding:13px 20px; border-radius:8px; border:1.5px solid var(--ink);
+  background:var(--ink); color:var(--white); cursor:pointer;
+  width:100%; text-align:center;
+}
+.btn:active{transform:translateY(1px);}
+.btn.secondary{background:var(--white); color:var(--ink);}
+.btn.shu{background:var(--shu); border-color:var(--shu); color:var(--white);}
+.btn.ghost{background:none; border-color:var(--line); color:var(--ink-soft);}
+.btn:disabled{opacity:0.4; cursor:not-allowed;}
+.btn-row{display:flex; gap:10px;}
+.btn-row .btn{flex:1;}
+
+/* File input */
+.dropzone{
+  border:2px dashed var(--line); border-radius:10px;
+  padding:32px 16px; text-align:center; background:var(--paper-dim);
+  margin-bottom:14px;
+}
+.dropzone .big{font-size:32px; margin-bottom:6px;}
+.dropzone .filecount{font-family:var(--mono); font-size:13px; color:var(--ink-soft); margin-top:8px;}
+input[type=file]{display:none;}
+
+/* Progress */
+.progress-wrap{margin:18px 0;}
+.progress-bar{height:10px; background:var(--paper-dim); border-radius:6px; overflow:hidden; border:1px solid var(--line);}
+.progress-bar .fill{height:100%; background:var(--shu); width:0%; transition:width .2s;}
+.progress-label{font-family:var(--mono); font-size:12px; color:var(--ink-soft); margin-top:8px; text-align:center;}
+
+/* Group list */
+.group-item{
+  background:var(--white); border:1px solid var(--line); border-radius:10px;
+  margin-bottom:12px; overflow:hidden;
+}
+.group-item .g-head{
+  display:flex; gap:12px; align-items:center; padding:12px 14px; cursor:pointer;
+}
+.group-item .g-thumb{
+  width:52px; height:52px; border-radius:6px; object-fit:cover;
+  border:1px solid var(--line); flex:0 0 auto; background:var(--paper-dim);
+}
+.group-item .g-info{flex:1; min-width:0;}
+.group-item .g-title{font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.group-item .g-sub{font-family:var(--mono); font-size:11px; color:var(--ink-soft); margin-top:2px;}
+.group-item .g-badge{
+  font-family:var(--mono); font-size:11px; background:var(--paper-dim);
+  border:1px solid var(--line); border-radius:12px; padding:3px 10px; flex:0 0 auto;
+}
+.group-item .g-badge.warn{background:#f3e0c8; border-color:#d8b374; color:#7a4e12;}
+.group-body{display:none; padding:0 14px 16px; border-top:1px dashed var(--line);}
+.group-body.open{display:block;}
+
+.field-row{margin-bottom:12px;}
+.field-row label{display:block; font-size:11px; color:var(--ink-soft); margin-bottom:4px; font-weight:700; letter-spacing:0.03em;}
+.field-row input, .field-row select, .field-row textarea{
+  width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:6px;
+  font-size:15px; background:var(--white); font-family:var(--sans); color:var(--ink);
+}
+.field-row input:focus{outline:none; border-color:var(--shu);}
+.ocr-raw{
+  font-family:var(--mono); font-size:11px; white-space:pre-wrap; word-break:break-all;
+  background:var(--paper-dim); border:1px solid var(--line); border-radius:6px;
+  padding:10px; max-height:100px; overflow-y:auto; color:var(--ink-soft); margin-bottom:12px;
+}
+.thumb-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(64px,1fr)); gap:6px; margin:10px 0;}
+.thumb-grid .t-wrap{position:relative;}
+.thumb-grid img{width:100%; aspect-ratio:1; object-fit:cover; border-radius:5px; border:1px solid var(--line); display:block;}
+.thumb-grid .t-wb{border:2px solid var(--shu);}
+.thumb-grid .t-tag{
+  position:absolute; bottom:2px; left:2px; background:rgba(28,31,26,0.75); color:var(--white);
+  font-family:var(--mono); font-size:9px; padding:1px 4px; border-radius:3px;
+}
+.thumb-grid .t-split{
+  position:absolute; top:2px; right:2px; width:20px; height:20px; border-radius:50%;
+  background:var(--white); border:1px solid var(--line); font-size:11px;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+
+.small-note{font-size:12px; color:var(--ink-soft); line-height:1.6; margin:6px 0 14px;}
+.small-note.warn{color:#7a4e12;}
+.tag-proto{
+  display:inline-block; font-family:var(--mono); font-size:10px; background:var(--shu);
+  color:var(--white); padding:1px 6px; border-radius:3px; margin-left:6px; vertical-align:middle;
+}
+
+/* Bottom nav */
+nav.bottom{
+  position:sticky; bottom:0; z-index:40; background:var(--white);
+  border-top:1px solid var(--line); display:flex;
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+}
+nav.bottom button{
+  flex:1; background:none; border:none; font-family:var(--sans); font-size:11px;
+  color:var(--ink-soft); padding:8px 4px; display:flex; flex-direction:column;
+  align-items:center; gap:4px; cursor:pointer; border-radius:8px;
+}
+nav.bottom button .ic{font-size:18px;}
+nav.bottom button.active{color:var(--shu); font-weight:700;}
+
+.empty{text-align:center; padding:40px 20px; color:var(--ink-soft);}
+.empty .big{font-size:40px; margin-bottom:10px;}
+
+.toast{
+  position:fixed; left:50%; bottom:90px; transform:translateX(-50%);
+  background:var(--ink); color:var(--white); padding:11px 18px; border-radius:8px;
+  font-size:13px; z-index:100; max-width:88%; text-align:center; box-shadow:0 4px 14px rgba(0,0,0,0.25);
+  opacity:0; pointer-events:none; transition:opacity .25s;
+}
+.toast.show{opacity:1;}
+
+.stamp-title{
+  display:inline-block; transform:rotate(-2deg); border:2px solid var(--shu); color:var(--shu);
+  font-family:var(--mono); font-weight:700; font-size:12px; padding:3px 10px; border-radius:3px;
+  margin-bottom:10px; letter-spacing:0.05em;
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="brand">
+      <span class="mark">現場</span>
+      <h1>写真台帳自動作成</h1>
+    </div>
+    <button class="icon-btn" id="btnSettingsTop" aria-label="設定">⚙</button>
+  </header>
+
+  <!-- HOME -->
+  <section class="screen active" id="screen-home"></section>
+
+  <!-- REVIEW -->
+  <section class="screen" id="screen-review"></section>
+
+  <!-- EXPORT -->
+  <section class="screen" id="screen-export"></section>
+
+  <!-- SETTINGS -->
+  <section class="screen" id="screen-settings"></section>
+
+  <nav class="bottom">
+    <button data-screen="home" class="active"><span class="ic">📷</span>撮影取込</button>
+    <button data-screen="review"><span class="ic">📋</span>グループ確認</button>
+    <button data-screen="export"><span class="ic">📦</span>書き出し</button>
+    <button data-screen="settings"><span class="ic">⚙</span>設定</button>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
